@@ -53,7 +53,7 @@ public class BasicHttpServer(string certPath, string keyPath)
         while (true)
         {
             var client = await listener.AcceptTcpClientAsync();
-            await ProcessHttpRequest(client);
+            _ = ProcessHttpRequest(client);
         }
     }
 
@@ -65,15 +65,16 @@ public class BasicHttpServer(string certPath, string keyPath)
         while (true)
         {
             var client = await listener.AcceptTcpClientAsync();
-            await ProcessHttpRequest(client, serverCertificate);
+            _ = ProcessHttpRequest(client, serverCertificate);
         }
     }
 
     private static async Task ProcessHttpRequest(TcpClient client, X509Certificate2? certificate = null)
     {
+        string remoteIp = "";
         try
         {
-            string remoteIp = client.Client.RemoteEndPoint?.ToString() ?? "Unknown IP";
+            remoteIp = client.Client.RemoteEndPoint?.ToString() ?? "Unknown IP";
             Console.WriteLine($"Connection from {remoteIp}");
 
             StreamReader reader;
@@ -100,8 +101,6 @@ public class BasicHttpServer(string certPath, string keyPath)
                 await DataParser.ParseData(client, reader, writer, true);
                 Console.WriteLine("HTTP - Completed");
             }
-
-            Console.WriteLine("-------------------------------------------------------------------------------------");
         }
         catch (AuthenticationException ae)
         {
@@ -142,6 +141,7 @@ public class BasicHttpServer(string certPath, string keyPath)
             string errorMessage = ioe.Message;
             if (
                 errorMessage == "Received an unexpected EOF or 0 bytes from the transport stream." ||
+                errorMessage == "Unable to read data from the transport connection: Connection reset by peer." ||
                 errorMessage == "Unable to write data to the transport connection: Connection reset by peer.")
             {
                 // Console.WriteLine($"Info: Client disconnected during TLS handshake. This is normal.");
@@ -170,7 +170,9 @@ public class BasicHttpServer(string certPath, string keyPath)
         }
         finally
         {
+            Console.WriteLine($"Closing connection from {remoteIp}");
             client.Close();
+            Console.WriteLine("-------------------------------------------------------------------------------------"); 
         }
     }
 }
